@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#2563eb"/>
+  <title>PoyaChat - Private Messaging</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- App Manifest for PWA -->
+  <link rel="manifest" href="manifest.json" />
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --secondary: #f59e0b;
+    }
+    
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    
+    .gradient-bg {
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    }
+    
+    .chat-bubble {
+      border-radius: 1.125rem 1.125rem 1.125rem 0;
+      max-width: 75%;
+    }
+    
+    .chat-bubble.self {
+      border-radius: 1.125rem 1.125rem 0 1.125rem;
+    }
+    
+    /* Custom scrollbar */
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 10px;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 10px;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <!-- Auth Modal (hidden by default) -->
+  <div id="authModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-lg p-8 w-full max-w-md">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold text-gray-800">Welcome to PoyaChat</h2>
+        <button id="closeAuthModal" class="text-gray-500 hover:text-gray-700">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <div id="loginForm">
+        <div class="mb-4">
+          <label class="block text-gray-700 mb-2">Email or Phone</label>
+          <input type="text" id="loginEmail" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div class="mb-6">
+          <label class="block text-gray-700 mb-2">Password</label>
+          <input type="password" id="loginPassword" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <button id="loginBtn" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition mb-4">
+          Log In
+        </button>
+        <div class="text-center">
+          <button id="showForgotPassword" class="text-blue-600 hover:underline text-sm">Forgot password?</button>
+          <p class="text-gray-600 mt-2">Don't have an account? <button id="showSignup" class="text-blue-600 hover:underline">Sign up</button></p>
+        </div>
+      </div>
+      
+      <div id="signupForm" class="hidden">
+        <div class="mb-4">
+          <label class="block text-gray-700 mb-2">Name</label>
+          <input type="text" id="signupName" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div class="mb-4">
+          <label class="block text-gray-700 mb-2">Email or Phone</label>
+          <input type="text" id="signupEmail" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div class="mb-6">
+          <label class="block text-gray-700 mb-2">Password</label>
+          <input type="password" id="signupPassword" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <button id="signupBtn" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition mb-4">
+          Create Account
+        </button>
+        <div class="text-center">
+          <button id="showLogin" class="text-blue-600 hover:underline">Already have an account? Log in</button>
+        </div>
+      </div>
+      
+      <div id="forgotPasswordForm" class="hidden">
+        <div class="mb-4">
+          <label class="block text-gray-700 mb-2">Email or Phone</label>
+          <input type="text" id="forgotEmail" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <button id="resetPasswordBtn" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition mb-4">
+          Reset Password
+        </button>
+        <div class="text-center">
+          <button id="backToLogin" class="text-blue-600 hover:underline">Back to login</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- App Container -->
+  <div id="appContainer" class="flex flex-col h-screen max-w-6xl mx-auto hidden">
+    <!-- Header -->
+    <header class="gradient-bg text-white p-4 shadow-md">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center">
+            <i class="fas fa-comment-dots text-blue-600 text-xl"></i>
+          </div>
+          <h1 class="text-xl font-bold">PoyaChat</h1>
+        </div>
+        <div class="flex items-center space-x-4">
+          <button class="p-2 rounded-full hover:bg-blue-700 transition">
+            <i class="fas fa-phone-alt"></i>
+          </button>
+          <button class="p-2 rounded-full hover:bg-blue-700 transition">
+            <i class="fas fa-video"></i>
+          </button>
+          <button id="logoutBtn" class="p-2 rounded-full hover:bg-blue-700 transition hidden">
+            <i class="fas fa-sign-out-alt"></i>
+          </button>
+        </div>
+      </div>
+    </header>
+    
+    <!-- Main Content -->
+    <main class="flex flex-1 overflow-hidden">
+      <!-- Sidebar -->
+      <aside class="hidden md:block w-80 bg-white border-r border-gray-200">
+        <div class="p-4 border-b border-gray-200">
+          <div class="relative">
+            <input type="text" placeholder="Search conversations..." 
+                   class="w-full pl-10 pr-4 py-2 rounded-lg bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <i class="fas fa-search absolute left-3 top-3 text-gray-500"></i>
+          </div>
+        </div>
+        
+        <div class="overflow-y-auto h-full custom-scrollbar">
+          <!-- Conversation List -->
+          <div class="divide-y divide-gray-100">
+            <!-- Conversation Item -->
+            <div class="p-4 hover:bg-gray-50 cursor-pointer flex items-center space-x-3">
+              <div class="relative">
+                <img src="https://randomuser.me/api/portraits/women/44.jpg" alt="Profile" class="w-12 h-12 rounded-full">
+                <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></span>
+              </div>
+              <div class="flex-1 min-w-0">
+                <h3 class="font-medium text-gray-900 truncate">Sarah Johnson</h3>
+                <p class="text-sm text-gray-500 truncate">Hey, how's the project going?</p>
+              </div>
+              <div class="text-xs text-gray-500">2:30 PM</div>
+            </div>
+            
+            <!-- More conversation items -->
+            <div class="p-4 hover:bg-gray-50 cursor-pointer flex items-center space-x-3">
+              <div class="relative">
+                <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" class="w-12 h-12 rounded-full">
+                <span class="absolute bottom-0 right-0 w-3 h-3 bg-gray-300 rounded-full border-2 border-white"></span>
+              </div>
+              <div class="flex-1 min-w-0">
+                <h3 class="font-medium text-gray-900 truncate">Team Group</h3>
+                <p class="text-sm text-gray-500 truncate">Alex: I've sent the files</p>
+              </div>
+              <div class="text-xs text-gray-500">Yesterday</div>
+            </div>
+            
+            <div class="p-4 hover:bg-gray-50 cursor-pointer flex items-center space-x-3">
+              <div class="relative">
+                <img src="https://randomuser.me/api/portraits/men/75.jpg" alt="Profile" class="w-12 h-12 rounded-full">
+                <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></span>
+              </div>
+              <div class="flex-1 min-w-0">
+                <h3 class="font-medium text-gray-900 truncate">Michael Chen</h3>
+                <p class="text-sm text-gray-500 truncate">Let's meet tomorrow at 10</p>
+              </div>
+              <div class="text-xs text-gray-500">Mon</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+      
+      <!-- Chat Area -->
+      <section class="flex-1 flex flex-col bg-gray-50">
+        <!-- Chat Header -->
+        <div class="bg-white p-4 border-b border-gray-200 flex items-center justify-between">
+          <div class="flex items-center space-x-3">
+            <img src="https://randomuser.me/api/portraits/women/44.jpg" alt="Profile" class="w-10 h-10 rounded-full">
+            <div>
+              <h2 class="font-semibold">Sarah Johnson</h2>
+              <p class="text-xs text-gray-500">Online</p>
+            </div>
+          </div>
+          <div class="flex items-center space-x-4">
+            <button class="text-gray-500 hover:text-blue-600">
+              <i class="fas fa-phone-alt"></i>
+            </button>
+            <button class="text-gray-500 hover:text-blue-600">
+              <i class="fas fa-video"></i>
+            </button>
+            <button class="text-gray-500 hover:text-blue-600">
+              <i class="fas fa-info-circle"></i>
+            </button>
+          </div>
+        </div>
+        
+        <!-- Messages -->
+        <div class="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+          <!-- Date separator -->
+          <div class="text-center my-4">
+            <span class="px-3 py-1 bg-gray-200 rounded-full text-xs text-gray-600">Today</span>
+          </div>
+          
+          <!-- Incoming message -->
+          <div class="flex items-start space-x-2">
+            <img src="https://randomuser.me/api/portraits/women/44.jpg" alt="Profile" class="w-8 h-8 rounded-full mt-1">
+            <div>
+              <div class="bg-white chat-bubble px-4 py-2 shadow-sm">
+                <p>Hey there! How's it going?</p>
+              </div>
+              <p class="text-xs text-gray-500 mt-1 px-2">10:30 AM</p>
+            </div>
+          </div>
+          
+          <!-- Outgoing message -->
+          <div class="flex items-start justify-end space-x-2">
+            <div class="text-right">
+              <div class="bg-blue-100 chat-bubble self px-4 py-2 shadow-sm">
+                <p>I'm doing great! Just working on that project we discussed.</p>
+              </div>
+              <p class="text-xs text-gray-500 mt-1 px-2">10:32 AM</p>
+            </div>
+            <img src="https://randomuser.me/api/portraits/men/1.jpg" alt="Profile" class="w-8 h-8 rounded-full mt-1">
+          </div>
+          
+          <!-- Incoming message with image -->
+          <div class="flex items-start space-x-2">
+            <img src="https://randomuser.me/api/portraits/women/44.jpg" alt="Profile" class="w-8 h-8 rounded-full mt-1">
+            <div>
+              <div class="bg-white chat-bubble px-4 py-2 shadow-sm">
+                <p>Check out this design I made!</p>
+                <img src="https://via.placeholder.com/300x200.png?text=Design+Preview" alt="Design" class="mt-2 rounded-lg max-w-xs">
+              </div>
+              <p class="text-xs text-gray-500 mt-1 px-2">10:35 AM</p>
+            </div>
+          </div>
+          
+          <!-- Outgoing message -->
+          <div class="flex items-start justify-end space-x-2">
+            <div class="text-right">
+              <div class="bg-blue-100 chat-bubble self px-4 py-2 shadow-sm">
+                <p>Wow, that looks amazing! The colors work really well together.</p>
+              </div>
+              <p class="text-xs text-gray-500 mt-1 px-2">10:36 AM</p>
+            </div>
+            <img src="https://randomuser.me/api/portraits/men/1.jpg" alt="Profile" class="w-8 h-8 rounded-full mt-1">
+          </div>
+          
+          <!-- Typing indicator -->
+          <div class="flex items-start space-x-2">
+            <img src="https://randomuser.me/api/portraits/women/44.jpg" alt="Profile" class="w-8 h-8 rounded-full mt-1">
+            <div>
+              <div class="bg-white chat-bubble px-4 py-2 shadow-sm w-20">
+                <div class="flex space-x-1">
+                  <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                  <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                  <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.3s"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Message Input -->
+        <div class="bg-white p-4 border-t border-gray-200">
+          <div class="flex items-center space-x-2">
+            <button class="text-gray-500 hover:text-blue-600 p-2 rounded-full">
+              <i class="fas fa-paperclip"></i>
+            </button>
+            <button class="text-gray-500 hover:text-blue-600 p-2 rounded-full">
+              <i class="fas fa-image"></i>
+            </button>
+            <div class="flex-1 relative">
+              <input type="text" placeholder="Type a message..." 
+                     class="w-full pl-4 pr-12 py-2 rounded-full bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <button class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-blue-600">
+                <i class="far fa-smile"></i>
+              </button>
+            </div>
+            <button class="bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition">
+              <i class="fas fa-paper-plane"></i>
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+    
+    <!-- Mobile Bottom Navigation -->
+    <nav class="md:hidden flex items-center justify-around bg-white border-t border-gray-200 p-2">
+      <button class="p-2 text-blue-600">
+        <i class="fas fa-comment-alt text-xl"></i>
+      </button>
+      <button class="p-2 text-gray-500">
+        <i class="fas fa-users text-xl"></i>
+      </button>
+      <button class="p-2 text-gray-500">
+        <i class="fas fa-phone-alt text-xl"></i>
+      </button>
+      <button class="p-2 text-gray-500">
+        <i class="fas fa-cog text-xl"></i>
+      </button>
+    </nav>
+  </div>
+  
+  <!-- Service Worker Registration and Auth Logic -->
+  <script>
+    // Auth state management
+    let currentUser = null;
+    
+    // DOM elements
+    const authModal = document.getElementById('authModal');
+    const appContainer = document.getElementById('appContainer');
+    const logoutBtn = document.getElementById('logoutBtn');
+    
+    // Form toggles
+    document.getElementById('showSignup').addEventListener('click', () => {
+      document.getElementById('loginForm').classList.add('hidden');
+      document.getElementById('signupForm').classList.remove('hidden');
+    });
+    
+    document.getElementById('showLogin').addEventListener('click', () => {
+      document.getElementById('signupForm').classList.add('hidden');
+      document.getElementById('loginForm').classList.remove('hidden');
+    });
+    
+    document.getElementById('showForgotPassword').addEventListener('click', () => {
+      document.getElementById('loginForm').classList.add('hidden');
+      document.getElementById('forgotPasswordForm').classList.remove('hidden');
+    });
+    
+    document.getElementById('backToLogin').addEventListener('click', () => {
+      document.getElementById('forgotPasswordForm').classList.add('hidden');
+      document.getElementById('loginForm').classList.remove('hidden');
+    });
+    
+    document.getElementById('closeAuthModal').addEventListener('click', () => {
+      authModal.classList.add('hidden');
+    });
+    
+    // Mock auth functions (replace with real Firebase/auth implementation)
+    function login(email, password) {
+      // Simulate API call
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          currentUser = {
+            email: email,
+            name: "Test User"
+          };
+          resolve(currentUser);
+        }, 1000);
+      });
+    }
+    
+    function signup(name, email, password) {
+      // Simulate API call
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          currentUser = {
+            email: email,
+            name: name
+          };
+          resolve(currentUser);
+        }, 1000);
+      });
+    }
+    
+    function forgotPassword(email) {
+      // Simulate API call
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          resolve({success: true});
+        }, 1000);
+      });
+    }
+    
+    // Event handlers
+    document.getElementById('loginBtn').addEventListener('click', async () => {
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+      
+      if (!email || !password) {
+        alert('Please enter both email and password');
+        return;
+      }
+      
+      try {
+        const user = await login(email, password);
+        authModal.classList.add('hidden');
+        appContainer.classList.remove('hidden');
+        logoutBtn.classList.remove('hidden');
+        // Update UI with user info
+      } catch (error) {
+        alert('Login failed: ' + error.message);
+      }
+    });
+    
+    document.getElementById('signupBtn').addEventListener('click', async () => {
+      const name = document.getElementById('signupName').value;
+      const email = document.getElementById('signupEmail').value;
+      const password = document.getElementById('signupPassword').value;
+      
+      if (!name || !email || !password) {
+        alert('Please fill all fields');
+        return;
+      }
+      
+      try {
+        const user = await signup(name, email, password);
+        authModal.classList.add('hidden');
+        appContainer.classList.remove('hidden');
+        logoutBtn.classList.remove('hidden');
+        // Update UI with user info
+      } catch (error) {
+        alert('Signup failed: ' + error.message);
+      }
+    });
+    
+    document.getElementById('resetPasswordBtn').addEventListener('click', async () => {
+      const email = document.getElementById('forgotEmail').value;
+      
+      if (!email) {
+        alert('Please enter your email');
+        return;
+      }
+      
+      try {
+        await forgotPassword(email);
+        alert('Password reset link sent to your email');
+        document.getElementById('forgotPasswordForm').classList.add('hidden');
+        document.getElementById('loginForm').classList.remove('hidden');
+      } catch (error) {
+        alert('Password reset failed: ' + error.message);
+      }
+    });
+    
+    logoutBtn.addEventListener('click', () => {
+      currentUser = null;
+      appContainer.classList.add('hidden');
+      logoutBtn.classList.add('hidden');
+      authModal.classList.remove('hidden');
+      // Clear form fields
+      document.getElementById('loginEmail').value = '';
+      document.getElementById('loginPassword').value = '';
+    });
+    
+    // Show auth modal on load
+    document.addEventListener('DOMContentLoaded', () => {
+      authModal.classList.remove('hidden');
+      
+      // Register service worker for PWA functionality
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js')
+          .then(registration => {
+            console.log('ServiceWorker registration successful with scope: ', registration.scope);
+          })
+          .catch(err => {
+            console.log('ServiceWorker registration failed: ', err);
+          });
+      }
+
+      // Simple message sending functionality
+      const messageInput = document.querySelector('input[placeholder="Type a message..."]');
+      const sendButton = document.querySelector('.fa-paper-plane').parentElement;
+      
+      sendButton.addEventListener('click', () => {
+        if (messageInput.value.trim() !== '') {
+          // In a real app, this would send the message to the server
+          console.log('Message sent:', messageInput.value);
+          messageInput.value = '';
+        }
+      });
+      
+      // Allow pressing Enter to send
+      messageInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          sendButton.click();
+        }
+      });
+    });
+  </script>
+</body>
+</html>
